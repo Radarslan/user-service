@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+
+  database:
+    image: "postgres:latest"
+    networks:
+      - network
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: gibberish
+      POSTGRES_DB: user_service
+
+  user-service:
+    image: "tiangolo/uvicorn-gunicorn-fastapi:python3.9"
+    command: bash -c "ls -la;
+      python -m pip install --upgrade pip setuptools wheel &&
+      pip install poetry &&
+      poetry config virtualenvs.create false &&
+      poetry install --no-interaction --no-ansi --extras 'pgsql toml mypy' &&
+      poetry update &&
+      poetry lock &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    networks:
+      - network
+    depends_on:
+      - database
+    environment:
+      DATABASE_USERNAME: user
+      DATABASE_PASSWORD: gibberish
+      DATABASE_NAME: user_service
+      DATABASE_HOST: database
+      DATABASE_PORT: 5433
+      BACKEND_CORS_ORIGINS: "*"
+      PROJECT_NAME: "user-service"
+    volumes:
+      - ./:/app/
+    working_dir: /app
+
+
+networks:
+  network:
+    driver: bridge
